@@ -3,6 +3,7 @@
 --   WY55_FRAMES  frames to run before dumping and exiting (default 1500)
 --   WY55_SETUP   comma-separated frames at which to press SetUp for 6 frames (blank NVRAM waits for it)
 --   WY55_KEYS    comma-separated FRAME:KEY presses, KEY being an input field name such as A or Return
+--   WY55_POKE    comma-separated FRAME:ADDR:VALUE writes to internal RAM (hex ADDR and VALUE), e.g. 300:7b:25
 --   WY55_OUT     directory for the dump: ram0/ram1/font/iram .bin, personality.log, snapshot (default .)
 local out = os.getenv("WY55_OUT") or "."
 local frames = tonumber(os.getenv("WY55_FRAMES") or "1500")
@@ -12,6 +13,10 @@ for f in string.gmatch(os.getenv("WY55_SETUP") or "", "%d+") do
 end
 for f, k in string.gmatch(os.getenv("WY55_KEYS") or "", "(%d+):([^,]+)") do
 	presses[#presses + 1] = { tonumber(f), k }
+end
+local pokes = {}
+for f, a, v in string.gmatch(os.getenv("WY55_POKE") or "", "(%d+):(%x+):(%x+)") do
+	pokes[#pokes + 1] = { tonumber(f), tonumber(a, 16), tonumber(v, 16) }
 end
 
 local names = {
@@ -49,6 +54,12 @@ emu.register_frame_done(function()
 	for _, p in ipairs(presses) do
 		if count == p[1] or count == p[1] + 6 then
 			key_field(p[2]):set_value(count == p[1] and 1 or 0)
+		end
+	end
+
+	for _, p in ipairs(pokes) do
+		if count == p[1] then
+			idata:write_u8(p[2], p[3])
 		end
 	end
 

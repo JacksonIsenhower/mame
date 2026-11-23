@@ -86,7 +86,7 @@ private:
 	u8 p3_r();
 	void update_geometry();
 	int cell_height() const { return (m_ga[0x13] >= 6 && m_ga[0x13] <= 14) ? m_ga[0x13] + 2 : 16; }
-	int rows() const { return BIT(m_ga[0x01], 1) ? 43 : 26; }
+	int rows() const { return cell_height() < 16 ? 44 : 26; }
 	void vblank_w(int state);
 
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
@@ -169,8 +169,9 @@ void wy55_state::ga_w(offs_t offset, u8 data)
 
 void wy55_state::update_geometry()
 {
-	// C7 bit 7 selects 80 columns, which use a 2/3 dot clock with the same line rate. C1 bit 1 selects 42/43 lines
-	// (43 rows with the status line, 26 otherwise), and D3 is the character cell height - 2.
+	// C7 bit 7 selects 80 columns, which use a 2/3 dot clock with the same line rate. D3 is the character cell
+	// height - 2: 16-line cells give 26 rows (status line, 24/25 lines, label line), 10-line cells the 42/43-line
+	// layout of 44 rows.
 	const bool c80 = BIT(m_ga[0x07], 7);
 	const int lines = std::min(rows() * cell_height(), 440);
 	m_screen->configure(c80 ? 1050 : 1575, 448, rectangle(0, (c80 ? 800 : 1188) - 1, 0, lines - 1), m_screen->frame_period());
@@ -201,10 +202,12 @@ u32 wy55_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	// RAM (gate array C5 bit 3), or for the personalities without one (WY-50, TVI, ADDS, Hazeltine) are embedded in
 	// the character plane as field attribute bytes 80-9F that apply until the next one. Characters A0-FF are
 	// protected characters, shown with the attribute in C0 (bit 6 = dim, bits 0-4 as below).
-	// Attribute bits: 0-1 intensity (2 = dim, 3 = bold), 2 underline, 3 reverse, 4 blink, 6-7 glyph bank (font RAM
+	// Attribute bits: 0-1 intensity (1 = invisible, 2 = dim, 3 = bold), 2 underline, 3 reverse, 4 blink, 6-7 glyph bank (font RAM
 	// holds 512 glyphs: bit 6 selects 80-FF, which hold the line drawing and multinational characters). The cursor
-	// row has bit 3 of its header set, and gate array C9 holds the cursor's column + 1.
-	static constexpr rgb_t PALETTE[4] = { rgb_t(0xd0, 0xd0, 0xc8), rgb_t(0xff, 0xff, 0xf8), rgb_t(0x80, 0x80, 0x7c), rgb_t(0xff, 0xff, 0xf8) };
+	// row has bit 3 of its header set, and gate array C9 holds the cursor's column + 1. Header bit 7 makes the row
+	// double width (the firmware stores each character in both cells of a pair), bit 6 double height, with bit 4
+	// set for the top half.
+	static constexpr rgb_t PALETTE[4] = { rgb_t(0xd0, 0xd0, 0xc8), rgb_t::black(), rgb_t(0x80, 0x80, 0x7c), rgb_t(0xff, 0xff, 0xf8) };
 	const bool c80 = BIT(m_ga[0x07], 7);
 	const bool embedded = !BIT(m_ga[0x05], 3);
 	const u8 protect = (m_ga[0x00] & 0x1f) | (BIT(m_ga[0x00], 6) ? 0x02 : 0x00);
@@ -221,6 +224,9 @@ u32 wy55_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	{
 		const u16 base = (m_charram[0x1f00 + row * 2] << 8 | m_charram[0x1f01 + row * 2]) & 0x1fff;
 		const u8 header = m_charram[base];
+		const bool dw = BIT(header, 7);
+		const bool dh = BIT(header, 6);
+		const int dh_base = BIT(header, 4) ? 0 : ch;
 		if (row < 2)
 			field = 0;
 		for (int col = 0; col < cols; col++)
@@ -254,7 +260,7 @@ u32 wy55_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 				const int sy = row * ch + y;
 				if (sy < cliprect.min_y || sy > cliprect.max_y)
 					continue;
-				const int fy = y;
+				const int fy = dh ? (dh_base + y) / 2 : y;
 				u8 bits = hidden ? 0 : m_fontram[(glyph << 4 | fy) & 0x1fff];
 				if (BIT(attr, 2) && fy == underline)
 					bits = 0xff;
@@ -264,7 +270,8 @@ u32 wy55_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 					const int sx = col * cw + x;
 					if (sx < cliprect.min_x || sx > cliprect.max_x)
 						continue;
-					const bool on = (x < 8 ? BIT(bits, 7 - x) : linegfx ? BIT(bits, 0) : (BIT(attr, 2) && fy == underline)) != inv;
+					const int gx = dw ? ((col & 1) * cw + x) / 2 : x;
+					const bool on = (gx < 8 ? BIT(bits, 7 - gx) : linegfx ? BIT(bits, 0) : (BIT(attr, 2) && fy == underline)) != inv;
 					bitmap.pix(sy, sx) = on ? fg : rgb_t::black();
 				}
 			}
