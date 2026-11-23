@@ -652,6 +652,9 @@ void ins8250_uart_device::update_msr()
 	{
 		data = (!m_dcd << 7) | (!m_ri << 6) | (!m_dsr << 5) | (!m_cts << 4);
 		change = (m_regs.msr ^ data) >> 4;
+		// TERI is only set on the trailing edge of RI
+		if(!(m_regs.msr & 0x40) && (data & 0x40))
+			change &= ~4;
 	}
 
 	m_regs.msr = data | change;
