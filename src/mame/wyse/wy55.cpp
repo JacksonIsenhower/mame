@@ -36,6 +36,7 @@
 #include "cpu/mcs51/i80c52.h"
 #include "machine/ins8250.h"
 #include "machine/nvram.h"
+#include "machine/pc_lpt.h"
 #include "machine/scn_pci.h"
 #include "sound/beep.h"
 #include "screen.h"
@@ -59,6 +60,7 @@ public:
 		, m_uart(*this, "uart%c", 'a')
 		, m_host(*this, "host")
 		, m_aux(*this, "aux")
+		, m_lpt(*this, "lpt")
 		, m_keyboard(*this, "keyboard")
 		, m_screen(*this, "screen")
 		, m_beeper(*this, "beeper")
@@ -66,6 +68,7 @@ public:
 		, m_charram(*this, "nvram0")
 		, m_attrram(*this, "nvram1")
 		, m_fontram(*this, "fontram")
+		, m_config(*this, "CONFIG")
 	{
 	}
 
@@ -105,6 +108,7 @@ private:
 	optional_device_array<ns16450_device, 2> m_uart;
 	optional_device<rs232_port_device> m_host;
 	optional_device<rs232_port_device> m_aux;
+	optional_device<pc_lpt_device> m_lpt;
 	optional_device<wyse_keyboard_port_device> m_keyboard;
 	required_device<screen_device> m_screen;
 	optional_device<beep_device> m_beeper;
@@ -112,6 +116,7 @@ private:
 	optional_shared_ptr<u8> m_charram;
 	optional_shared_ptr<u8> m_attrram;
 	optional_shared_ptr<u8> m_fontram;
+	optional_ioport m_config;
 
 	bool m_kbd_t1 = true;
 	u8 m_ga[0x20]{};
@@ -198,9 +203,12 @@ void wy55_state::update_geometry()
 u8 wy55_state::p3_r()
 {
 	// P3.4 (T0) <- keyboard data, inverted: high when the addressed key is down. The firmware reads the keyboard ID
-	// MSB first and knows 82 (ASCII), 41 (Enhanced PC) and C1. P3.5 (T1) is high after a DD write and low after a DC
-	// strobe, which the keyboard self-test checks.
-	return 0xcf | (m_keyboard->data_r() ? 0x00 : 0x10) | (m_kbd_t1 ? 0x20 : 0x00);
+	// MSB first and knows 82 (ASCII), 41 (Enhanced PC) and C1. P3.5 (T1) is read only at power-up (8286), to tell
+	// whether the parallel port is fitted: if T1 follows the keyboard command line (high after DD, low after DC) it
+	// isn't, and the firmware turns a Setup Printer of "parallel" into "serial". How the real board wires T1 isn't
+	// known; with the port fitted it reads low here.
+	const bool t1 = BIT(m_config->read(), 0) ? false : m_kbd_t1;
+	return 0xcf | (m_keyboard->data_r() ? 0x00 : 0x10) | (t1 ? 0x20 : 0x00);
 }
 
 void wy55_state::vblank_w(int state)
@@ -327,9 +335,9 @@ void wy55_state::ext_map(address_map &map)
 	map(0x8000, 0x9fff).ram().share("nvram1");
 	map(0xa000, 0xbfff).ram().share("fontram");
 	map(0xc000, 0xdfff).rw(FUNC(wy55_state::ga_r), FUNC(wy55_state::ga_w));
-	map(0xf018, 0xf018).nopw();             // parallel data
-	map(0xf019, 0xf019).lr8(NAME([] () -> u8 { return 0x07; }));    // parallel status: no printer
-	map(0xf01a, 0xf01a).noprw();            // parallel control
+	// The 16C452's printer port has a PC parallel port's registers; the firmware polls it (busy, then data and a
+	// strobe pulse on control bit 0)
+	map(0xf018, 0xf01a).rw(m_lpt, FUNC(pc_lpt_device::read), FUNC(pc_lpt_device::write));
 	map(0xf028, 0xf02f).rw(m_uart[0], FUNC(ns16450_device::ins8250_r), FUNC(ns16450_device::ins8250_w));
 	map(0xf030, 0xf037).rw(m_uart[1], FUNC(ns16450_device::ins8250_r), FUNC(ns16450_device::ins8250_w));
 }
@@ -351,6 +359,10 @@ void wy55_state::wy65_ext_map(address_map &map)
 
 
 static INPUT_PORTS_START(wy55)
+	PORT_START("CONFIG")
+	PORT_CONFNAME(0x01, 0x01, "Parallel port")
+	PORT_CONFSETTING(0x00, "Not fitted")
+	PORT_CONFSETTING(0x01, "Fitted")
 INPUT_PORTS_END
 
 void wy55_state::wy55_base(machine_config &config)
@@ -402,6 +414,8 @@ void wy55_state::wy55(machine_config &config)
 	m_aux->dcd_handler().set(m_uart[0], FUNC(ns16450_device::dcd_w));
 
 	WYSE_KEYBOARD(config, m_keyboard, wy60_keyboards, "ascii");
+
+	PC_LPT(config, m_lpt); // parallel port (Setup Printer: parallel), with a printer writing to a file
 
 	m_screen->screen_vblank().set(FUNC(wy55_state::vblank_w));
 
