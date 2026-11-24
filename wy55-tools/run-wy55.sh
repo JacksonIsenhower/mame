@@ -16,6 +16,11 @@
 # ($WY55_FLOW: dtr by default, rts for the RTS patch, off), so with Setup's Mdm Rc Hsk at DTR
 # (wysetup.py handshake=dtr) programs writing to the pty block instead of losing characters.
 #
+# Printing: the parallel printer writes to $state/parallel.prn when Setup's Printer is parallel (wysetup.py
+# printer=parallel; the factory setting is serial). WY55_AUX=printer puts a serial printer on the Aux port as
+# well, writing to $state/aux.prn (Printer: serial, at Setup's Aux baud rate, 9600 by default). Both files are
+# rewritten at each start.
+#
 # WY55_ROM=wy55p runs the patched firmware: roms/wy55p/wy55p.bin, a link to tmux-wy55's build/251352-12.bin
 # (python3 -I tools/wy55-patch.py there). Its NVRAM is kept apart from the original's.
 #
@@ -49,6 +54,8 @@ done
 echo "WY-55 host port: $tty"
 
 cd "$here"
-./wy55 "$rom" -rompath roms -nvram_directory "$state/nvram" -cfg_directory "$state/cfg" \
+printers=(-prin "$state/parallel.prn")
+[[ ${WY55_AUX:-} == printer ]] && printers=(-aux printer -prin1 "$state/aux.prn" -prin2 "$state/parallel.prn")
+./wy55 "$rom" "${printers[@]}" -rompath roms -nvram_directory "$state/nvram" -cfg_directory "$state/cfg" \
 	-snapshot_directory "$state/snap" -host null_modem -bitb "socket.127.0.0.1:$port" \
 	-autoboot_script "$here/wy55-tools/harness.lua" "$@"

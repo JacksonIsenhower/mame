@@ -9,7 +9,7 @@ with --from it starts from another pair (default: the factory-default pair next 
 
 Settings: personality=vt220-7, columns=132, lines=42, baud=115200, aux-baud=9600, scroll=jump|smooth-1..8,
 cursor=blink-block|steady-block|blink-line|steady-line, display=dark|light, cell=10x16|10x15|10x13,
-saver=on|off, status=on|off, bell=off|1|2|3, handshake=none|xon|dtr|both, or raw FIELD:MASK=VALUE in hex
+saver=on|off, status=on|off, bell=off|1|2|3, handshake=none|xon|dtr|both, printer=serial|parallel|none, or raw FIELD:MASK=VALUE in hex
 (FIELD being n in 1FDF+n, as in docs/WY-55-internals.md).
 
 Where the firmware keeps Setup: the saved copy is in the attribute RAM, nvram1 offset 1D87+n holding Setup field n
@@ -45,6 +45,7 @@ SETTINGS = {
     "scroll": (2, 0x07, {"jump": 0x04, "smooth-8": 0x03, "smooth-4": 0x02, "smooth-2": 0x01, "smooth-1": 0x00}),
     "status": (14, 0x08, {"on": 0x00, "off": 0x08}),
     "bell": (11, 0xC0, {"off": 0x00, "1": 0x40, "2": 0x80, "3": 0xC0}),
+    "printer": (11, 0x30, {"serial": 0x00, "parallel": 0x10, "none": 0x20}),
     "handshake": (8, 0x05, {"none": 0x05, "xon": 0x04, "dtr": 0x01, "both": 0x00}),
     "baud": (14, 0xF0, {str(b): i << 4 for i, b in enumerate(BAUDS)}),
     "aux-baud": (12, 0xF0, {str(b): i << 4 for i, b in enumerate(BAUDS)}),
