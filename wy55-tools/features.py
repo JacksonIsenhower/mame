@@ -65,7 +65,8 @@ PROBES = {
     "stbm": {"ansi": LINES + CSI + "2;4r" + ansi_at(3, 0) + "\n"},
     "insline": {"wyse": LINES + wy_at(1, 0) + ESC + "E", "ansi": LINES + ansi_at(1, 0) + CSI + "L"},
     "softfont": {"wyse": ESC + "cA141" + GLYPH + "\x19",
-                 "ansi": ESC + "P0;33;1;0;0;0{ @" + "~" * 8 + "/" + "~" * 8 + ESC + "\\"},
+                 # DECDLD: the firmware stores a character when the ";" after it arrives, so end with one
+                 "ansi": ESC + "P0;33;1;0;0;0{ @" + "~" * 8 + "/" + "~" * 8 + ";" + ESC + "\\"},
     "ident": {"wyse": ESC + " ", "ansi": CSI + "c" + CSI + ">c", "vt52": ESC + "Z"},
     "eightbit": {f: "x\xe9\xc4\xb0y" for f in CLEAR},
     "dwl": {"ansi": "Wide" + ESC + "#6"},

@@ -131,7 +131,7 @@
    lines42   yes (42 lines)
    stbm      yes
    insline   yes
-   softfont  no
+   softfont  yes (12 bytes)
    ident     b'\x1b[?1;2c\x1b[>1;20;0c'
    eightbit  69/00 44/00 30/00 79/00  [xiD0y]
    dwl       yes
@@ -144,7 +144,7 @@
    lines42   yes (42 lines)
    stbm      yes
    insline   yes
-   softfont  no
+   softfont  yes (12 bytes)
    ident     b'\x1b[?1;2c\x1b[>1;20;0c'
    eightbit  69/40 44/40 30/40 79/00  [xiD0y]
    dwl       yes
@@ -157,7 +157,7 @@
    lines42   yes (42 lines)
    stbm      yes
    insline   yes
-   softfont  no
+   softfont  yes (12 bytes)
    ident     b'\x9b?1;2c\x9b>1;20;0c'
    eightbit  69/40 44/40 30/40 79/00  [xiD0y]
    dwl       yes
