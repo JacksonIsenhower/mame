@@ -1,0 +1,4 @@
+no handshake                     LINES LOST         DTR stayed on, RTS stayed on
+DTR handshake, host ignores it   LINES LOST         DTR went off, RTS went off
+DTR handshake, host on DTR       all lines arrived  DTR went off, RTS went off
+DTR handshake, host on RTS       all lines arrived  DTR went off, RTS went off

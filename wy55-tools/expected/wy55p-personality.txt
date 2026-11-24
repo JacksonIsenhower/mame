@@ -1,0 +1,4 @@
+TVI 925, then ESC ~ 1        -> $23=07 TVI 925
+TVI 925, then ESC ~ 0        -> $23=07 TVI 925
+VT100, then CSI 93 % p, CSI 49 % p -> $23=A8 VT 100 -> $23=AD UNIX CONSOLE
+PC Term, then ESC ~ 1        -> $23=67 PC TERM
