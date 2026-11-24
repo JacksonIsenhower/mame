@@ -23,8 +23,8 @@
         F030-F037   16C452 UART B, host port (interrupt on INT0)
     - Each vertical retrace is signalled on UART B's RI input; the firmware's per-frame work runs from the modem status
       interrupt. Every frame it rebuilds a table of row start addresses, two bytes (high, low) per row, at 1F00.
-    - Keyboard: the standard Wyse serial-scan keyboard. A write to DC strobes the keyboard command line, advancing the
-      key counter; writes to DD leave it idle, and enough of them in a row let the counter reset. T0 reads the addressed
+    - Keyboard: the standard Wyse serial-scan keyboard. A write to DC pulses the keyboard command line, advancing the
+      key counter, and leaves it active; writes to DD leave it idle, and enough of them in a row let the counter reset. T0 reads the addressed
       key, inverted (high when it is down); T1 tells whether the last of those writes was to DD. On blank NVRAM the
       firmware waits for SetUp to be pressed.
 
@@ -163,15 +163,19 @@ void wy55_state::ga_w(offs_t offset, u8 data)
 		break;
 
 	case 0x1c:
-		// Strobe the keyboard command line: the keyboard advances its key counter on the rising edge (or resets it
-		// after the line has been idle), and the addressed key can be read for a while after the falling edge
+		// Pulse the keyboard command line and leave it active (T1 reads it back low): the keyboard advances its key
+		// counter on each rising edge. The firmware scans with interrupts enabled, so the line has to stay active
+		// between these writes, or an interrupt in the middle of a scan would let the counter time out and the rest
+		// of the scan would read the wrong keys (held keys seen as released, so they repeat at once).
+		if (!m_kbd_t1)
+			m_keyboard->cmd_w(0);
 		m_keyboard->cmd_w(1);
-		m_keyboard->cmd_w(0);
 		m_kbd_t1 = false;
 		break;
 
 	case 0x1d:
-		// No strobe; the firmware writes this repeatedly to let the keyboard's counter time out and reset
+		// Leave the line idle; the firmware writes this repeatedly to let the keyboard's counter time out and reset
+		m_keyboard->cmd_w(0);
 		m_kbd_t1 = true;
 		break;
 
