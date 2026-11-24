@@ -41,5 +41,7 @@ while kill -0 $emu 2>/dev/null; do
 	# A pty has no baud rate or carrier: -L ignores carrier, -8 passes 8-bit characters. The window size isn't part
 	# of termios, so set it on the pty each time (it lasts while the emulator holds the pty open).
 	stty -F "$pts" rows "$rows" cols "$cols" 2>/dev/null || true
-	sudo "$agetty" --noclear -L -8 "${pts#/dev/}" "${WY55_BAUD:-115200}" "$term" || sleep 1
+	# setsid: agetty has to start a session of its own to make the pty its controlling terminal; under sudo it
+	# would otherwise be in this terminal's session (or sudo's own pty) and fail with "cannot get controlling tty"
+	sudo setsid -w "$agetty" --noclear -L -8 "${pts#/dev/}" "${WY55_BAUD:-115200}" "$term" || sleep 1
 done
