@@ -7,6 +7,7 @@
 # as you would to the USB-serial adapter, for example a shell:
 #
 #   wy55-tools/wy55-shell.sh            # login shell on the emulated terminal
+#   wy55-tools/wy55-getty.sh            # or instead of run-wy55.sh: the emulator with agetty on its port
 #
 # On first run the NVRAM is seeded from wy55-tools/nvram/$WY55_PRESET (default vt220-132x42-115200, the real
 # terminal's setup: VT220-7, 132x42, 115200 8N1; "factory" is the factory defaults at 9600). wysetup.py changes

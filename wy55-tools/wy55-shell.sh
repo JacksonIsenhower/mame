@@ -3,13 +3,14 @@
 #
 #   wy55-tools/wy55-shell.sh [TERM] [ROWS COLS]
 #
-# TERM defaults to wy50 (the WY-55's factory personality); use vt220 after switching the terminal to VT220.
+# The defaults match run-wy55.sh's default setup (VT220-7, 132x42); with WY55_PRESET=factory use wy50 24 80.
+# For a login prompt instead of a shell, use wy55-getty.sh.
 set -euo pipefail
 
 tty=${WY55_TTY:-${XDG_STATE_HOME:-$HOME/.local/state}/wy55/tty}
-term=${1:-wy50}
-rows=${2:-24}
-cols=${3:-80}
+term=${1:-vt220}
+rows=${2:-42}
+cols=${3:-132}
 [[ -e $tty ]] || { echo "no $tty: start run-wy55.sh first" >&2; exit 1; }
 
 # The pty's other end carries the bytes to the emulated UART; set the shell-side line discipline here
