@@ -31,7 +31,7 @@ for _ in $(seq 100); do
 	sleep 0.1
 done
 [[ -e $tty ]] || { echo "the emulator's pty didn't appear at $tty" >&2; exit 1; }
-# agetty wants the real device (/dev/pts/N), not the link
+# agetty wants the real device, not the link, and named relative to /dev (pts/N): it puts /dev/ in front itself
 pts=$(readlink -f "$tty")
 echo "agetty on $pts ($term, ${cols}x$rows)"
 
@@ -41,5 +41,5 @@ while kill -0 $emu 2>/dev/null; do
 	# A pty has no baud rate or carrier: -L ignores carrier, -8 passes 8-bit characters. The window size isn't part
 	# of termios, so set it on the pty each time (it lasts while the emulator holds the pty open).
 	stty -F "$pts" rows "$rows" cols "$cols" 2>/dev/null || true
-	sudo "$agetty" --noclear -L -8 "$pts" "${WY55_BAUD:-115200}" "$term" || sleep 1
+	sudo "$agetty" --noclear -L -8 "${pts#/dev/}" "${WY55_BAUD:-115200}" "$term" || sleep 1
 done
